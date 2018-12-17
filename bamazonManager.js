@@ -16,6 +16,8 @@ connection.connect((err) => {
     listOptions();
 })
 
+
+
 function listOptions() {
     inquirer.prompt([
         {
@@ -79,43 +81,86 @@ function addToInventory() {
             name: "itemID"
         }
     ]).then((ans) => {
-        var oldStock;
-        var queryOne = connection.query(
-            "SELECT stock_quantity FROM products WHERE ?",
+        var currQuantity;
+        currQuantity = getCurrQuantity(ans.itemID);
+    }).catch((err) => {
+        console.log(err);
+    });
+}
+
+function getCurrQuantity(itemID) {
+    connection.query(
+        "SELECT * FROM products WHERE ?",
+        {
+            item_id: itemID
+        },
+        (err, res) => {
+            if (err) {
+                throw err;
+            }
+            addFiftyUnits(res[0].stock_quantity, itemID);
+        });
+}
+
+function addFiftyUnits(oldQuantity, itemID) {
+    connection.query(
+        "UPDATE products SET ? WHERE ?",
+        [
             {
-                item_id: ans.itemID
+                stock_quantity: oldQuantity + 50
+            },
+            {
+                item_id: itemID
+            }
+        ],
+        (err, res) => {
+            if (err) {
+                console.log(err);
+            }
+            console.log(`Added 50 units to item number ${itemID}!`);
+            connection.end();
+        }
+
+    )
+}
+
+function addNewProduct() {
+    inquirer.prompt([
+        {
+            type: "input",
+            message: "What product would you like to add?",
+            name: "productName"
+        },
+        {
+            type: "input",
+            message: "To which department would you like to add it?",
+            name: "productDept",
+        },
+        {
+            type: "input",
+            message: "What price should the new product be?",
+            name: "productPrice"
+        },
+        {
+            type: "input",
+            message: "How many of this product would you like to stock?",
+            name: "productStock"
+        }
+    ]).then((ans) => {
+        connection.query(
+            "INSERT INTO products SET ?",
+            {
+                product_name: ans.productName,
+                department_name: ans.productDept,
+                price: ans.productPrice,
+                stock_quantity: ans.productStock
             },
             (err, res) => {
-                if (err) throw err;
-                oldStock = res;
-                console.log(oldStock);
-                console.log(res);
-            }
-        )
-        var newStock = oldStock + 50;
-        console.log(newStock);
-        var queryTwo = connection.query(
-            "UPDATE products SET ? WHERE ?",
-            [
-                {
-                    stock_quantity: newStock
-                },
-                {
-                    item_id: ans.itemID
-                }
-            ],
-            (err, res) => {
-                if (err) throw err;
-                console.log(res);
+                console.log(res.affectedRows + " product inserted!\n");
+                connection.end();
             }
         )
     }).catch((err) => {
         console.log(err);
     })
-
-
-}
-
-function addNewProduct() {
-
 }
